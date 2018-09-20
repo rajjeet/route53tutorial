@@ -1,0 +1,98 @@
+
+  # Vpc 2
+    # Subnet 1
+    # Subnet 2
+    # Internet gateway
+    # Route table
+  # Security group tcp/80 tcp/22
+  # 3 EC2 AMI ami-04169656fea786776
+Resources:
+  r53LabVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: labName
+          Value: r53
+  
+  r53LabSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      Tags:
+        - Key: labName
+          Value: r53
+      VpcId: !Ref r53LabVpc
+      MapPublicIpOnLaunch: true
+
+  r53LabSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: labName
+          Value: r53
+      VpcId: !Ref r53LabVpc
+  
+  r53LabInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: labName
+          Value: r53
+  
+  r53LabVpcGatewayAttachment:    
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref r53LabInternetGateway
+      VpcId: !Ref r53LabVpc      
+
+  r53LabRoutetable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref r53LabVpc
+      Tags:
+        - Key: labName
+          Value: r53
+    
+  r53LabAllRoutes:      
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0            
+      GatewayId: !Ref r53LabInternetGateway
+      RouteTableId: !Ref r53LabRoutetable
+
+  r53LabWebSecurityGroup:  
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: r3-lab-webServerGroup
+      GroupDescription: Security group for web server      
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0          
+          FromPort: 80
+          ToPort: 80        
+          IpProtocol: tcp                    
+        - CidrIp: 0.0.0.0/0          
+          FromPort: 22
+          ToPort: 22      
+          IpProtocol: tcp
+      Tags:
+        - Key: labName
+          Value: r53
+      VpcId: !Ref r53LabVpc      
+
+  r53Ec2WebServer1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-04169656fea786776
+      InstanceType: t2.micro
+      KeyName: KeyPairTest
+      SecurityGroupIds:
+        - !Ref r53LabWebSecurityGroup
+      SubnetId: !Ref r53LabSubnet1
+      Tags:
+          - Key: labName
+            Value: r53
+
