@@ -1,16 +1,19 @@
+Parameters:
 
-  # Vpc 2
-    # Subnet 1
-    # Subnet 2
-    # Internet gateway
-    # Route table
-  # Security group tcp/80 tcp/22
-  # 3 EC2 AMI ami-04169656fea786776
+  KeyPairName:
+    Type: String
+    Description: Key Pair specific to region
+
+  ImageAmi:
+    Type: String
+    Description: Image AMI of the EC2 instances
+
 Resources:
+
   r53LabVpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: 172.16.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
@@ -20,21 +23,28 @@ Resources:
   r53LabSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 10.0.0.0/24
+      CidrBlock: 172.16.0.0/24
       Tags:
         - Key: labName
           Value: r53
       VpcId: !Ref r53LabVpc
       MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
 
   r53LabSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: 172.16.1.0/24
       Tags:
         - Key: labName
           Value: r53
       VpcId: !Ref r53LabVpc
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
   
   r53LabInternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -56,6 +66,18 @@ Resources:
       Tags:
         - Key: labName
           Value: r53
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref r53LabRoutetable
+      SubnetId: !Ref r53LabSubnet1
+  
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref r53LabRoutetable
+      SubnetId: !Ref r53LabSubnet2
     
   r53LabAllRoutes:      
     Type: AWS::EC2::Route
@@ -86,13 +108,38 @@ Resources:
   r53Ec2WebServer1:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-04169656fea786776
+      ImageId: !Ref ImageAmi
       InstanceType: t2.micro
-      KeyName: KeyPairTest
+      KeyName: !Ref KeyPairName
       SecurityGroupIds:
         - !Ref r53LabWebSecurityGroup
       SubnetId: !Ref r53LabSubnet1
       Tags:
           - Key: labName
             Value: r53
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt update
+          apt install docker.io -y
+          docker run --rm -p 80:80 benpiper/r53-ec2-web
+
+  r53Ec2WebServer2:
+    Type: AWS::EC2::Instance
+    Properties:      
+      ImageId: !Ref ImageAmi
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds:
+        - !Ref r53LabWebSecurityGroup
+      SubnetId: !Ref r53LabSubnet2
+      Tags:
+          - Key: labName
+            Value: r53
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt update
+          apt install docker.io -y
+          docker run --rm -p 80:80 benpiper/r53-ec2-web
 
